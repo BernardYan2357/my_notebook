@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 
 def imshow(**images):
     """
@@ -20,41 +19,3 @@ def imshow(**images):
             cv2.imshow(name, image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
-
-def generate_gaussian_noise(img,std=25):
-    """
-    生成高斯噪声图像
-    传入参数img为灰度图像,std为噪声标准差,默认值为25
-    返还值为添加高斯噪声后的图像
-    """
-    gauss_noise=np.random.normal(0,std,size=img.shape)
-    img_G_noise=np.clip(img+gauss_noise,0,255).astype(np.uint8)
-    return img_G_noise
-
-def generate_salt_and_pepper_noise(img,threshold=0.05):
-    """
-    生成椒盐噪声图像
-    传入参数img为灰度图像,threshold为噪声比例,默认值为0.05
-    返还值为添加椒盐噪声后的图像
-    """
-    x,y=img.shape
-    salt_pepper_noise=np.random.rand(x,y)
-    img[salt_pepper_noise<threshold]=0
-    img[salt_pepper_noise>(1-threshold)]=255
-    img_S_noise=img.copy()
-    return img_S_noise
-
-def show_gray_hist(gray):
-    """
-    显示灰度图像的直方图
-    传入参数gray为灰度图像
-    """
-    hist=cv2.calcHist(gray,[0],None,[256],[0,256])
-    plt.figure(figsize=[4,3])
-    plt.plot(hist, color='black')
-    plt.title('Grayscale Histogram')
-    plt.xlabel('Pixel Value')
-    plt.ylabel('Frequency')
-    plt.xlim([0, 256])
-    plt.grid(True)
-    plt.show()
