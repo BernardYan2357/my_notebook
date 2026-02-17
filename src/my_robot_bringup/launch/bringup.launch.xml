@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <let name="description_path" value="$(find-pkg-share my_robot_description)/urdf/my_robot.xacro"/>
+    <let name="rviz_config_path" value="$(find-pkg-share my_robot_bringup)/config/moveit_config.rviz"/>
+    
+    <node pkg="robot_state_publisher" exec="robot_state_publisher">
+        <param name="robot_description" value="$(command 'xacro $(var description_path)')"/>
+    </node>
+
+    <node pkg="controller_manager" exec="ros2_control_node">
+        <remap from="/controller_manager/robot_description" to="/robot_description"/>
+        <param from="$(find-pkg-share my_robot_bringup)/config/ros2_controllers.yaml"/>
+    </node>
+
+    <node pkg="controller_manager" exec="spawner" args="joint_state_broadcaster"/>
+    <node pkg="controller_manager" exec="spawner" args="arm_controller"/>
+    <node pkg="controller_manager" exec="spawner" args="gripper_controller"/>
+
+    <include file="$(find-pkg-share my_robot_moveit_config)/launch/move_group.launch.py"/>
+
+    <!--node pkg="my_robot_commander_cpp" exec="commander"/-->
+
+    <node pkg="rviz2" exec="rviz2" output="screen" args="-d $(var rviz_config_path)"/>
+</launch>
