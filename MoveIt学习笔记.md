@@ -335,6 +335,7 @@ ros2 launch my_robot_moveit_config demo.launch.py
 - 将夹爪添加至现有框架：
   1. 将`gripper.xacro` include 到`my_robot.urdf.xacro`中，移动`material`标签至`common_properities.xacro`中，并在`my_robot.urdf.xacro`中定义一个fixed joint 将 gripper 连接到`arm.xacro`中定义的空link: `tool_link`上
   2. 使用 MoveIt Setup Assistant 更新设置
+    - 工作空间下运行`ros2 launch moveit_setup_assistant setup_assistant.launch.py`，选择"Edit Existing MoveIt Configuration Package”，选择之前配置生成的包
     - Regenerate Collision Matrix
     - Add a planning group for the gripper, choose no kinematic slover, and add gripper joints to the group
     - Create a few poses: gripper_open, gripper_closed, gripper_half_closed
