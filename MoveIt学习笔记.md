@@ -777,7 +777,7 @@ void jointCmdCallback(const FloatArray &msg)
 joint_cmd_sub_ = node_->create_subscription<FloatArray>("cmd_joint", 10, std::bind(&Commander::jointCmdCallback, this, _1));
 ```
 
-#### Custom Message
+### Custom Message
 
 对于 target pose ，使用`geometry_msgs/msg/PoseStamped`将无法覆盖`bool cartesian_path`，此外，在上面的两个话题中，我们使用了example_interfaces，在实际应用中不应使用示例消息，而是使用自定义消息(在ROS2中，我们使用 interface 统称msg, srv, action)
 - [interface 列表](https://github.com/ros2/common_interfaces)
@@ -874,6 +874,12 @@ cd ~/moveit2_ws/src
 ros2 pkg create my_robot_commander_py --build-type ament_python --dependencies rclpy
 ```
 
+## Planning around objects
+
+- [planning_around_objects](https://moveit.picknik.ai/main/doc/tutorials/planning_around_objects/planning_around_objects.html)
+
+## MoveIt task constructor
+
 ## Connect MoveIt to Hardware
 
 ```mermaid
@@ -898,21 +904,14 @@ graph LR
 - commander 节点通过调用 API 与 move_group 通信，发出请求，move_group 进行 plan 、execute 等操作
 - joint_state_publisher 节点收集并发布 joint_states，传递给 robot_state_publisher，robot_state_publisher 发布 robot_description 话题，提供给 rviz 与 controller_manager
 
-对于开环控制的舵机机械臂，可以订阅`/joint_states`话题，获取当前关节状态，转换为串口命令，发送给舵机，控制机械臂。在`my_robot_joints_subscriber`包中实现了通过节点订阅`/joint_states`，获取当前 joints position
-
+对于开环控制的舵机机械臂，可以订阅`/joint_states`话题，获取当前关节状态，转换为串口命令，发送给舵机，控制机械臂。
 一般情况下，则需要将硬件接口接入 MoveIt
 
-## Planning around objects
 
-- [planning_around_objects](https://moveit.picknik.ai/main/doc/tutorials/planning_around_objects/planning_around_objects.html)
+
 
 
 ## OMPL constrained planning
 
 - [ompl_constrained_planning](https://moveit.picknik.ai/main/doc/how_to_guides/using_ompl_constrained_planning/ompl_constrained_planning.html)
 
-## More about ROS2
-
-### Controller manager
-
-- [controller_manager](https://wiki.ros.org/controller_manager)

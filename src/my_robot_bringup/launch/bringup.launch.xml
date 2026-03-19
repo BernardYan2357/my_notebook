@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
     <let name="description_path" value="$(find-pkg-share my_robot_description)/urdf/my_robot.xacro"/>
-    <let name="rviz_config_path" value="$(find-pkg-share my_robot_bringup)/config/moveit_config.rviz"/>
+    <let name="rviz_config_path" value="$(find-pkg-share my_robot_bringup)/config/moveit.rviz"/>
     
     <node pkg="robot_state_publisher" exec="robot_state_publisher">
         <param name="robot_description" value="$(command 'xacro $(var description_path)')"/>
@@ -18,7 +18,7 @@
 
     <include file="$(find-pkg-share my_robot_moveit_config)/launch/move_group.launch.py"/>
 
-    <!--node pkg="my_robot_commander_cpp" exec="commander"/-->
+    <node pkg="my_robot_commander_cpp" exec="commander"/>
 
     <node pkg="rviz2" exec="rviz2" output="screen" args="-d $(var rviz_config_path)"/>
 </launch>

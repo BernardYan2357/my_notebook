@@ -6,4 +6,4 @@
 - my_robot_interfaces：包含定义机器人接口的ROS消息类型文件
 - my_robot_commander_cpp：包含一个C++节点，用于订阅机器人控制指令
 - my_robot_commander_py：包含一个Python节点，用于订阅机器人控制指令
-- my_robot_joints_subscriber: 包含一个C++节点，用于订阅机器人关节位置信息
+- my_robot_demo
