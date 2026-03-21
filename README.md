@@ -7,3 +7,7 @@
 - my_robot_commander_cpp：包含一个C++节点，用于订阅机器人控制指令
 - my_robot_commander_py：包含一个Python节点，用于订阅机器人控制指令
 - my_robot_demo
+
+教程文档：
+
+- MTC教程.md：MoveIt Task Constructor 抓取圆柱体、搬运、放置实战教程

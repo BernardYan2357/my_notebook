@@ -21,14 +21,12 @@ int main(int argc, char *argv[])
     arm.setPlanningTime(5.0); // 设置规划时间
     arm.setNumPlanningAttempts(10); // 设置尝试次数
 
-    // 使用当前末端位姿作为基准，保证目标姿态可行性更高
-    auto const target_pose = [] {
-    geometry_msgs::msg::Pose msg;
-    msg.position.x = 0.00;
-    msg.position.y = 1.00;
-    msg.position.z = 0.60;
-    return msg;
-    }();
+    // 基于当前位姿生成目标，保证四元数合法
+    auto const start_pose = arm.getCurrentPose().pose;
+    auto target_pose = start_pose;
+    target_pose.position.x = 0.00;
+    target_pose.position.y = 0.80;
+    target_pose.position.z = 0.60;
 
     // 创建一个碰撞对象，并将其添加到规划场景中
     auto const collision_object = [frame_id = arm.getPlanningFrame()] { //定义一个lambda函数
@@ -45,6 +43,7 @@ int main(int argc, char *argv[])
       primitive.dimensions[primitive.BOX_Z] = 0.30;
       // 定义盒子的位置（相对于 frame_id）
       geometry_msgs::msg::Pose box_pose;
+      box_pose.orientation.w = 1.00;
       box_pose.position.x = 0.00;
       box_pose.position.y = 0.50;
       box_pose.position.z = 0.60;
@@ -54,20 +53,41 @@ int main(int argc, char *argv[])
       return collision_object;
     }();
 
-    // 目标规划->执行
+    // 目标规划->执行->回到 home 位姿
+    RCLCPP_INFO(node->get_logger(),
+      "Start pose (x=%.3f, y=%.3f, z=%.3f)",
+      start_pose.position.x,start_pose.position.y,start_pose.position.z);
     RCLCPP_INFO(node->get_logger(),
       "Target pose (x=%.3f, y=%.3f, z=%.3f)",
       target_pose.position.x,target_pose.position.y,target_pose.position.z);
     arm.setStartStateToCurrentState();
+    arm.clearPoseTargets();
     arm.setPoseTarget(target_pose);
     MoveGroupInterface::Plan plan_without_obstacle;
-    auto const ok_without_obstacle = static_cast<bool>(arm.plan(plan_without_obstacle));
+    auto ok_without_obstacle = static_cast<bool>(arm.plan(plan_without_obstacle));
+    if (!ok_without_obstacle) {
+      // 若完整位姿目标失败，降级为仅位置目标，提高可达性
+      arm.clearPoseTargets();
+      arm.setPositionTarget(target_pose.position.x, target_pose.position.y, target_pose.position.z);
+      ok_without_obstacle = static_cast<bool>(arm.plan(plan_without_obstacle));
+      RCLCPP_WARN(node->get_logger(), "Pose target failed, fallback to position-only target.");
+    }
     if (ok_without_obstacle) {
       RCLCPP_INFO(node->get_logger(), "Plan succeeded. Executing trajectory.");
       auto const exec_ok = static_cast<bool>(arm.execute(plan_without_obstacle));
       RCLCPP_INFO(node->get_logger(), "Execute result: %s", exec_ok ? "success" : "failed");
     } else {
       RCLCPP_WARN(node->get_logger(), "Plan failed. Try adjusting target pose.");
+    }
+    arm.setStartStateToCurrentState();
+    arm.setNamedTarget("home"); // 设置命名目标为 home，准备下一次规划
+    MoveGroupInterface::Plan plan_to_home;
+    auto const ok_to_home = static_cast<bool>(arm.plan(plan_to_home));
+    if (ok_to_home) {
+      auto const exec_ok = static_cast<bool>(arm.execute(plan_to_home));
+      RCLCPP_INFO(node->get_logger(), "Return home result: %s", exec_ok ? "success" : "failed");
+    } else {
+      RCLCPP_WARN(node->get_logger(), "Plan to home failed.");
     }
 
     // 添加对象->目标规划->执行
@@ -77,9 +97,16 @@ int main(int argc, char *argv[])
     // 等待一段时间，确保碰撞对象被添加到规划场景中
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     arm.setStartStateToCurrentState();
+    arm.clearPoseTargets();
     arm.setPoseTarget(target_pose);
     MoveGroupInterface::Plan plan_with_obstacle;
-    auto const ok_with_obstacle = static_cast<bool>(arm.plan(plan_with_obstacle));
+    auto ok_with_obstacle = static_cast<bool>(arm.plan(plan_with_obstacle));
+    if (!ok_with_obstacle) {
+      arm.clearPoseTargets();
+      arm.setPositionTarget(target_pose.position.x, target_pose.position.y, target_pose.position.z);
+      ok_with_obstacle = static_cast<bool>(arm.plan(plan_with_obstacle));
+      RCLCPP_WARN(node->get_logger(), "Pose target failed, fallback to position-only target.");
+    }
     if (ok_with_obstacle) {
       RCLCPP_INFO(node->get_logger(), "Plan succeeded. Executing collision-aware trajectory.");
       auto const exec_ok = static_cast<bool>(arm.execute(plan_with_obstacle));
