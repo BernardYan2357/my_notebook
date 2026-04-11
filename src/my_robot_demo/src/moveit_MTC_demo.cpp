@@ -1,210 +1,128 @@
-#include <thread>
-#include <chrono>
-#include <memory>
-#include <vector>
-
 #include <rclcpp/rclcpp.hpp>
-
-#include <geometry_msgs/msg/pose_stamped.hpp>
-#include <geometry_msgs/msg/vector3_stamped.hpp>
-#include <shape_msgs/msg/solid_primitive.hpp>
-#include <moveit_msgs/msg/collision_object.hpp>
-
+#include <moveit/planning_scene/planning_scene.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
-
 #include <moveit/task_constructor/task.h>
-#include <moveit/task_constructor/container.h>
-#include <moveit/task_constructor/stages/current_state.h>
-#include <moveit/task_constructor/stages/move_to.h>
-#include <moveit/task_constructor/stages/move_relative.h>
-#include <moveit/task_constructor/stages/modify_planning_scene.h>
-#include <moveit/task_constructor/solvers/pipeline_planner.h>
-#include <moveit/task_constructor/solvers/cartesian_path.h>
-#include <moveit/task_constructor/solvers/joint_interpolation.h>
+#include <moveit/task_constructor/solvers.h>
+#include <moveit/task_constructor/stages.h>
+#if __has_include(<tf2_geometry_msgs/tf2_geometry_msgs.hpp>)
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#else
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#endif
+#if __has_include(<tf2_eigen/tf2_eigen.hpp>)
+#include <tf2_eigen/tf2_eigen.hpp>
+#else
+#include <tf2_eigen/tf2_eigen.h>
+#endif
 
-using Task = moveit::task_constructor::Task;
-namespace stages = moveit::task_constructor::stages;
-namespace solvers = moveit::task_constructor::solvers;
-using CollisionObject = moveit_msgs::msg::CollisionObject;
+static const rclcpp::Logger LOGGER = rclcpp::get_logger("mtc_tutorial"); // 定义一个全局的日志记录器
+namespace task_constructor = moveit::task_constructor;
+using PlanningSceneInterface = moveit::planning_interface::PlanningSceneInterface;
 
-static const rclcpp::Logger LOGGER = rclcpp::get_logger("moveit_MTC_demo");
-
-template <typename T>
-void declareIfMissing(const rclcpp::Node::SharedPtr& node, const std::string& name, const T& value)
+class MTCTaskNode
 {
-  if (!node->has_parameter(name)) {
-    node->declare_parameter<T>(name, value);
-  }
+public:
+  MTCTaskNode(const rclcpp::NodeOptions& options);
+  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr getNodeBaseInterface();
+  void doTask();
+  void setupPlanningScene();
+
+private:
+  // Compose an MTC task from a series of stages.
+  task_constructor::Task createTask();
+  task_constructor::Task task_;
+  rclcpp::Node::SharedPtr node_;
+};
+
+// 构造函数，接受 NodeOptions 参数并创建一个 ROS2 节点
+MTCTaskNode::MTCTaskNode(const rclcpp::NodeOptions& options)
+  : node_{ std::make_shared<rclcpp::Node>("mtc_node", options)}
+{}
+
+// 获取节点的 NodeBaseInterface，这对于将节点添加到执行器中是必要的
+rclcpp::node_interfaces::NodeBaseInterface::SharedPtr MTCTaskNode::getNodeBaseInterface()
+{
+  return node_->get_node_base_interface();
 }
 
-void configureMTCNodeParameters(const rclcpp::Node::SharedPtr& node)
+// 设置规划场景，在这里我们创建了一个简单的圆柱体障碍物并将其添加到规划场景中
+void MTCTaskNode::setupPlanningScene()
 {
-  // Keep the demo self-contained: provide planning pipeline and IK params locally.
-  declareIfMissing<std::vector<std::string>>(node, "planning_pipelines.pipeline_names", {"ompl"});
-  declareIfMissing<std::string>(node, "ompl.planning_plugin", "ompl_interface/OMPLPlanner");
-  declareIfMissing<std::string>(
-      node,
-      "ompl.request_adapters",
-      "default_planner_request_adapters/AddTimeOptimalParameterization "
-      "default_planner_request_adapters/FixWorkspaceBounds "
-      "default_planner_request_adapters/FixStartStateBounds "
-      "default_planner_request_adapters/FixStartStateCollision "
-      "default_planner_request_adapters/FixStartStatePathConstraints");
-
-  declareIfMissing<std::string>(
-      node,
-      "robot_description_kinematics.arm.kinematics_solver",
-      "kdl_kinematics_plugin/KDLKinematicsPlugin");
-  declareIfMissing<double>(node, "robot_description_kinematics.arm.kinematics_solver_search_resolution", 0.005);
-  declareIfMissing<double>(node, "robot_description_kinematics.arm.kinematics_solver_timeout", 0.005);
-}
-
-CollisionObject makeCylinder(const std::string& frame_id)
-{
-  CollisionObject object;
-  object.id = "cylinder";
-  object.header.frame_id = frame_id;
-
-  shape_msgs::msg::SolidPrimitive primitive;
-  primitive.type = shape_msgs::msg::SolidPrimitive::CYLINDER;
-  primitive.dimensions.resize(2);
-  primitive.dimensions[shape_msgs::msg::SolidPrimitive::CYLINDER_HEIGHT] = 0.18;
-  primitive.dimensions[shape_msgs::msg::SolidPrimitive::CYLINDER_RADIUS] = 0.03;
-
+  moveit_msgs::msg::CollisionObject object;
+  object.id = "object";
+  object.header.frame_id = "world";
+  object.primitives.resize(1);
+  object.primitives[0].type = shape_msgs::msg::SolidPrimitive::CYLINDER;
+  object.primitives[0].dimensions = { 0.1, 0.02 }; // height, radius
   geometry_msgs::msg::Pose pose;
+  pose.position.x = 0.5;
+  pose.position.y = -0.25;
   pose.orientation.w = 1.0;
-  pose.position.x = 0.45;
-  pose.position.y = 0.00;
-  pose.position.z = 0.09;
-
-  object.primitives.push_back(primitive);
-  object.primitive_poses.push_back(pose);
-  object.operation = CollisionObject::ADD;
-  return object;
+  object.pose = pose;
+  PlanningSceneInterface().applyCollisionObject(object); // 将障碍物添加到规划场景中
 }
 
-Task createTask(const rclcpp::Node::SharedPtr& node)
+void MTCTaskNode::doTask()
 {
-  Task task;
-  task.stages()->setName("pick and place cylinder");
-  task.loadRobotModel(node);
-
-  auto pipeline = std::make_shared<solvers::PipelinePlanner>(node, "ompl");
-  pipeline->setPlannerId("RRTConnectkConfigDefault");
-
-  auto cartesian = std::make_shared<solvers::CartesianPath>();
-  cartesian->setMaxVelocityScalingFactor(0.2);
-  cartesian->setMaxAccelerationScalingFactor(0.2);
-  cartesian->setStepSize(0.01);
-
-  auto joint_interpolation = std::make_shared<solvers::JointInterpolationPlanner>();
-
-  task.add(std::make_unique<stages::CurrentState>("current state"));
-
-  {
-    auto stage = std::make_unique<stages::MoveTo>("open gripper", joint_interpolation);
-    stage->setGroup("gripper");
-    stage->setGoal("gripper_open");
-    task.add(std::move(stage));
+  task_ = createTask();
+  try{
+    task_.init();
   }
-
-  {
-    auto stage = std::make_unique<stages::MoveTo>("move to pick", pipeline);
-    stage->setGroup("arm");
-
-    geometry_msgs::msg::PoseStamped pick_pose;
-    pick_pose.header.frame_id = "base_link";
-    pick_pose.pose.orientation.w = 1.0;
-    pick_pose.pose.position.x = 0.45;
-    pick_pose.pose.position.y = 0.0;
-    pick_pose.pose.position.z = 0.24;
-
-    stage->setGoal(pick_pose);
-    task.add(std::move(stage));
+  catch (task_constructor::InitStageException& e){
+    RCLCPP_ERROR_STREAM(LOGGER, e);
+    return;
   }
-
-  {
-    auto stage = std::make_unique<stages::ModifyPlanningScene>("allow gripper-object collision");
-    const auto* jmg = task.getRobotModel()->getJointModelGroup("gripper");
-    stage->allowCollisions("cylinder", jmg->getLinkModelNamesWithCollisionGeometry(), true);
-    task.add(std::move(stage));
+  if (!task_.plan(5)){
+    RCLCPP_ERROR_STREAM(LOGGER, "Task planning failed");
+    return;
   }
-
-  {
-    auto stage = std::make_unique<stages::MoveTo>("close gripper", joint_interpolation);
-    stage->setGroup("gripper");
-    stage->setGoal("gripper_closed");
-    task.add(std::move(stage));
+  task_.introspection().publishSolution(*task_.solutions().front()); // 发布第一个解决方案以供 RViz 可视化
+  auto result = task_.execute(*task_.solutions().front()); // 执行第一个解决方案
+  if (result.val != moveit_msgs::msg::MoveItErrorCodes::SUCCESS){
+    RCLCPP_ERROR_STREAM(LOGGER, "Task execution failed");
+    return;
   }
+  return;
+}
 
-  {
-    auto stage = std::make_unique<stages::ModifyPlanningScene>("attach object");
-    stage->attachObject("cylinder", "tool_link");
-    task.add(std::move(stage));
-  }
+task_constructor::Task MTCTaskNode::createTask()
+{
+  task_constructor::Task task;
+  task.stages()->setName("demo task");
+  task.loadRobotModel(node_);
 
-  {
-    auto stage = std::make_unique<stages::MoveRelative>("lift object", cartesian);
-    stage->setGroup("arm");
-    stage->setIKFrame("tool_link");
+  const auto& arm_group_name = "panda_arm";
+  const auto& hand_group_name = "hand";
+  const auto& hand_frame = "panda_hand";
 
-    geometry_msgs::msg::Vector3Stamped direction;
-    direction.header.frame_id = "base_link";
-    direction.vector.z = 1.0;
+  // Set task properties
+  task.setProperty("group", arm_group_name);
+  task.setProperty("eef", hand_group_name);
+  task.setProperty("ik_frame", hand_frame);
 
-    stage->setMinMaxDistance(0.08, 0.15);
-    stage->setDirection(direction);
-    task.add(std::move(stage));
-  }
+// Disable warnings for this line, as it's a variable that's set but not used in this example
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+  task_constructor::Stage* current_state_ptr = nullptr;  // Forward current_state on to grasp pose generator
+#pragma GCC diagnostic pop
 
-  {
-    auto stage = std::make_unique<stages::MoveTo>("move to place", pipeline);
-    stage->setGroup("arm");
+  auto stage_state_current = std::make_unique<task_constructor::stages::CurrentState>("current");
+  current_state_ptr = stage_state_current.get();
+  task.add(std::move(stage_state_current));
 
-    geometry_msgs::msg::PoseStamped place_pose;
-    place_pose.header.frame_id = "base_link";
-    place_pose.pose.orientation.w = 1.0;
-    place_pose.pose.position.x = 0.30;
-    place_pose.pose.position.y = -0.35;
-    place_pose.pose.position.z = 0.26;
+  auto sampling_planner = std::make_shared<task_constructor::solvers::PipelinePlanner>(node_);
+  auto interpolation_planner = std::make_shared<task_constructor::solvers::JointInterpolationPlanner>();
 
-    stage->setGoal(place_pose);
-    task.add(std::move(stage));
-  }
+  auto cartesian_planner = std::make_shared<task_constructor::solvers::CartesianPath>();
+  cartesian_planner->setMaxVelocityScalingFactor(1.0);
+  cartesian_planner->setMaxAccelerationScalingFactor(1.0);
+  cartesian_planner->setStepSize(.01);
 
-  {
-    auto stage = std::make_unique<stages::MoveTo>("open gripper for release", joint_interpolation);
-    stage->setGroup("gripper");
-    stage->setGoal("gripper_open");
-    task.add(std::move(stage));
-  }
-
-  {
-    auto stage = std::make_unique<stages::ModifyPlanningScene>("detach object");
-    stage->detachObject("cylinder", "tool_link");
-    task.add(std::move(stage));
-  }
-
-  {
-    auto stage = std::make_unique<stages::ModifyPlanningScene>("forbid gripper-object collision");
-    const auto* jmg = task.getRobotModel()->getJointModelGroup("gripper");
-    stage->allowCollisions("cylinder", jmg->getLinkModelNamesWithCollisionGeometry(), false);
-    task.add(std::move(stage));
-  }
-
-  {
-    auto stage = std::make_unique<stages::MoveRelative>("retreat", cartesian);
-    stage->setGroup("arm");
-    stage->setIKFrame("tool_link");
-
-    geometry_msgs::msg::Vector3Stamped direction;
-    direction.header.frame_id = "base_link";
-    direction.vector.z = 1.0;
-
-    stage->setMinMaxDistance(0.05, 0.10);
-    stage->setDirection(direction);
-    task.add(std::move(stage));
-  }
+  auto stage_open_hand =
+      std::make_unique<task_constructor::stages::MoveTo>("open hand", interpolation_planner);
+  stage_open_hand->setGroup(hand_group_name);
+  stage_open_hand->setGoal("open");
+  task.add(std::move(stage_open_hand));
 
   return task;
 }
@@ -212,47 +130,21 @@ Task createTask(const rclcpp::Node::SharedPtr& node)
 int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<rclcpp::Node>("moveit_MTC_demo");
-  configureMTCNodeParameters(node);
+  rclcpp::NodeOptions options;
+  options.automatically_declare_parameters_from_overrides(true);
+  auto mtc_task_node = std::make_shared<MTCTaskNode>(options);
+  rclcpp::executors::MultiThreadedExecutor executor;
 
-  rclcpp::executors::SingleThreadedExecutor executor;
-  executor.add_node(node);
-  std::thread spinner([&executor]() { executor.spin(); });
+  auto spin_thread = std::make_unique<std::thread>([&executor, &mtc_task_node]() {
+    executor.add_node(mtc_task_node->getNodeBaseInterface());
+    executor.spin();
+    executor.remove_node(mtc_task_node->getNodeBaseInterface());
+  });
 
-  moveit::planning_interface::PlanningSceneInterface psi;
-  psi.applyCollisionObject(makeCylinder("base_link"));
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  mtc_task_node->setupPlanningScene();
+  mtc_task_node->doTask();
 
-  bool success = true;
-  try {
-    auto task = createTask(node);
-    if (!task.plan(10)) {
-      RCLCPP_ERROR(LOGGER, "MTC planning failed.");
-      success = false;
-    } else {
-      auto solution = task.solutions().front();
-      task.introspection().publishSolution(*solution);
-
-      auto result = task.execute(*solution);
-      if (result.val != result.SUCCESS) {
-        RCLCPP_ERROR(LOGGER, "MTC execution failed with code %d.", result.val);
-        success = false;
-      } else {
-        RCLCPP_INFO(LOGGER, "MTC pick and place finished.");
-      }
-    }
-  } catch (const std::exception& e) {
-    RCLCPP_ERROR(LOGGER, "Exception: %s", e.what());
-    success = false;
-  }
-
-  psi.removeCollisionObjects({"cylinder"});
-
-  executor.cancel();
-  if (spinner.joinable()) {
-    spinner.join();
-  }
+  spin_thread->join();
   rclcpp::shutdown();
-
-  return success ? 0 : 1;
+  return 0;
 }
