@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<library path="ctrl_robot_hardware_plugin">
+  <class
+    name="ctrl_robot_hardware/MobileBaseHardwareInterface"
+    type="ctrl_robot_hardware::MobileBaseHardwareInterface"
+    base_class_type="hardware_interface::SystemInterface">
+    <description>Mobile base hardware interface plugin.</description>
+  </class>
+</library>

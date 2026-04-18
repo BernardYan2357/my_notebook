@@ -9,13 +9,16 @@ namespace ctrl_robot_hardware
 class ExampleMotorDriver
 {
 public:
-    ExampleMotorDriver(const std::string& port, int left_motor_id, int right_motor_id);
-    ~ExampleMotorDriver();
+    ExampleMotorDriver(const std::string& port);
 
-    bool initialize();
-    bool read();
-    bool write();
+    bool init();
 
+    void activateWithVelocityMode(int motor_id);
+    void activateWithPositionMode(int motor_id);
+    void deactivate(int motor_id);
+
+    double getVelocityRadianPerSec(int motor_id); // 返回电机当前的速度，单位为弧度每秒
+    void setVelocityRadianPerSec(int motor_id, double velocity);
 private:
 };
 
