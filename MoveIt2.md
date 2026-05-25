@@ -1,76 +1,104 @@
-# MoveIt
+# MoveIt2
 
-参考：
-- [MoveIt 官方网站](https://moveit.ros.org/)
-- [MoveIt 文档](https://moveit.picknik.ai/main/index.html)
-- [FishROS 机械臂运动规划](https://fishros.org.cn/forum/category/28/机械臂运动规划)
-- [ROS 2 Moveit 2 - Control a Robotic Arm](https://www.udemy.com/course/ros2-moveit2/?couponCode=MT251006G3)
+Prerequisites:
 
-## What is MoveIt?
+- [[ROS/ROS2/ROS2URDF]]
+- [[ROS/ROS2/ROS2Control]]
 
-MoveIt 2 is the robotic manipulation platform for ROS 2 and incorporates the latest advances in motion planning, manipulation, 3D perception, kinematics, control, and navigation.
+References:
 
-## Install MoveIt
+- [MoveIt2 官方文档](https://moveit.picknik.ai/main/index.html)
+- [MoveIt2 Wiki | DeepWiki](https://deepwiki.com/moveit/moveit2/1-moveit-2-overview/)
+- [MoveIt2 Wiki | ZRead.AI](https://zread.ai/moveit/moveit2/1-overview)
+- [MoveIt2 视频教程 | Edouard](https://www.udemy.com/course/ros2-moveit2)
+- [MoveIt2 运动规划教程 | 周舒畅](https://zsc.github.io/ros2_tutorial/chapter14.html)
+
+## What is MoveIt2?
+
+MoveIt2 is the robotic manipulation platform for ROS 2 and incorporates the latest advances in motion planning, manipulation, 3D perception, kinematics, control, and navigation.
+
+## Install MoveIt2
 
 两种方式：1. 二进制安装 2. 源码编译安装
 
 - 二进制安装
+
   ```bash
-  sudo apt install ros-humble-moveit
+  sudo apt install ros-humble-moveit*
   ```
+
 - 源码编译安装
   拉取源码
+
   ```bash
   git clone https://github.com/ros-planning/moveit2_tutorials -b humble --depth 1 moveit2/src/moveit2_tutorials
   ```
-	将工作空间source到环境中
-	```bash
-	nano ~/.bashrc
-	# source ~/moveit2/install/setup.bash
-	```
+
+  将工作空间source到环境中
+
+  ```bash
+  nano ~/.bashrc
+  # source ~/moveit2/install/setup.bash
+  ```
+
   安装vcstool，自动读取repo文件并克隆其中的代码
+
   ```bash
   sudo apt install python3-vcstool
   cd moveit2/src
   vcs import < moveit2_tutorials/moveit2_tutorials.repos # 报错就把 repo 中地址加上镜像
   ```
+
   安装依赖，使用rosdepc
+
   ```bash
   wget http://fishros.com/install -O fishros && . fishros # 选3安装rosdepc
   rosdepc update
   cd moveit2
   rosdepc install --from-paths src --ignore-src -y
   ```
+
   编译
+
   ```bash
   cd moveit2
   colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
   ```
+
   编译中出错，发现是conda 的 Python 环境覆盖了系统默认 Python，解决方法：让 colcon 使用系统 Python
+
   ```bash
   which python3 # 查看系统python路径，/home/bernard/miniconda3/bin/python3，发现问题
   export PYTHONPATH=/opt/ros/humble/lib/python3.10/site-packages:$PYTHONPATH
   export PATH=/usr/bin:$PATH # 添加到.bashrc
   ```
+
   编译报错找不到 moveit_msgs
-	```bash
-	sudo apt update && sudo apt install -y ros-humble-moveit-msgs
-	```
-	编译 moveit_core 因内存不足被系统杀进程，cc1plus 报 Killed 错误
-	```bash
+
+  ```bash
+  sudo apt update && sudo apt install -y ros-humble-moveit-msgs
+  ```
+
+  编译 moveit_core 因内存不足被系统杀进程，cc1plus 报 Killed 错误
+
+  ```bash
   MAKEFLAGS="-j1" colcon build --executor sequential --cmake-args -DCMAKE_BUILD_TYPE=Release # 使用单核编译，一次只编译一个包，总编译时长约1小时30分钟，填 -j2 能缩短时间至10分钟左右
-	```
-	编译 moveit_task_constructor_core 时 Git 子模块拉取失败
-	```bash
+  ```
+
+  编译 moveit_task_constructor_core 时 Git 子模块拉取失败
+
+  ```bash
   cd ~/moveit2/src/moveit_task_constructor/
   rm -rf core/python/pybind11/ core/src/scope_guard/
   nano .gitmodules # 编辑.gitmodules，添加镜像
   git submodule update --init --recursive # 重新拉取子模块
-	```
-	编译完成后测试
-	```bash
-	ros2 launch moveit2_tutorials demo.launch.py
-	```
+  ```
+
+  编译完成后测试
+
+  ```bash
+  ros2 launch moveit2_tutorials demo.launch.py
+  ```
 
 ### Update moveit2
 
@@ -83,6 +111,11 @@ vcs pull
 
 ## Create robot model
 
+reference:
+
+- [ROS Wiki urdf/XML/link](https://wiki.ros.org/urdf/XML/link)
+- [ROS Wiki urdf/XML/joint](https://wiki.ros.org/urdf/XML/joint)
+
 ```bash
 mkdir moveit2_ws/src && cd moveit2_ws
 colcon build
@@ -93,6 +126,7 @@ mkdir urdf launch rviz
 ```
 
 在包内 CMakeLists.txt 中添加：
+
 ```cmake
 install(
   DIRECTORY launch rviz urdf
@@ -107,12 +141,8 @@ install(
 ```bash
 cd ~/moveit2_ws
 colcon build --packages-select my_robot_description
-```
-
 创建 urdf/arm.urdf 文件，编写机器人模型
-
-- [ROS Wiki urdf/XML/link](https://wiki.ros.org/urdf/XML/link)
-- [ROS Wiki urdf/XML/joint](https://wiki.ros.org/urdf/XML/joint)
+```
 
 安装 ros-humble-urdf-tutorials 包，方便可视化 urdf 模型
 
@@ -126,19 +156,24 @@ ros2 launch urdf_tutorial display.launch.py model:=/home/bernard/moveit2_ws/src/
 - link 的 origin 位置应填写几何中心位置
 - joint 的 origin 位置应填写连接点相对于上一 joint 的位置
 - 在开头放置 material 定义，后续 link 中可直接引用
+
   ```xml
   <material name="blue">
       <color rgba="0 0 0.5 1.0" />
+
   </material>
   <!-- 引用 -->
   <material name="blue"/>
   ```
+
 - 打印TF树
+
   ```bash
   ros2 run tf2_tools view_frames # 需在rviz运行时执行
   ```
 
 编程习惯：
+
 - 不要一次性编写完整个机器人模型，每添加一个 link 和 joint 就在 rviz 中查看效果，避免出错后不知从何处排查
 - 在编写 links & joints 时，可先指定 origin 和 axis 为默认值，编写完成后在 rviz 中查看模型，进行调整
 
@@ -147,6 +182,7 @@ ros2 launch urdf_tutorial display.launch.py model:=/home/bernard/moveit2_ws/src/
 - [ROS Wiki xacro](https://wiki.ros.org/xacro)
 
 一个标准的 xacro 文件结构：
+
 ```xml
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
@@ -155,6 +191,7 @@ ros2 launch urdf_tutorial display.launch.py model:=/home/bernard/moveit2_ws/src/
 ```
 
 在 urdf/ 目录下创建如下文件
+
 ```bash
 urdf/
   my_robot.urdf.xacro # 主文件，需 include 其他 xacro 文件
@@ -170,9 +207,10 @@ urdf/
 
 - [ROS Wiki roslaunch](https://wiki.ros.org/roslaunch)
 
-<img src="image/MoveIt学习笔记/display_rosgraph.png" style="zoom:200%;" />
+<img src="image/MoveIt2/display_rosgraph.png" alt="display.launch.xml rosgraph" style="zoom:200%;" />
 
 使用rqt_graph查看节点关系，可以发现，想要实现使用 display.launch.py 一样的效果，需要启动以下节点：
+
 - robot_state_publisher：订阅`/joint_states`话题，发布`/robot_description`话题
 - joint_state_publisher：订阅`/robot_description`话题，发布`/joint_states`话题
 - rviz2：订阅`/robot_description`话题
@@ -183,28 +221,31 @@ urdf/
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
-	<let name="urdf_path" value="$(find-pkg-share my_robot_description)/urdf/my_robot.urdf.xacro"/>
-	
-	<node pkg="robot_state_publisher" exec="robot_state_publisher">
-		<param name="robot_description" value="$(command 'xacro $(var urdf_path)')"/>
-	</node>
+  <let name="urdf_path" value="$(find-pkg-share my_robot_description)/urdf/my_robot.urdf.xacro"/>
 
-	<node pkg="joint_state_publisher_gui" exec="joint_state_publisher_gui"/>
+  <node pkg="robot_state_publisher" exec="robot_state_publisher">
+    <param name="robot_description" value="$(command 'xacro $(var urdf_path)')"/>
+    <!-- 如果传入的是urdf文件，则直接使用$(var urdf_path)，如果传入的是xacro文件，则需要使用$(command 'xacro $(var urdf_path)')，让 launch 文件调用 xacro 命令解析 xacro 文件 -->
+  </node>
 
-	<node pkg="rviz2" exec="rviz2" output="screen"/>
+  <node pkg="joint_state_publisher_gui" exec="joint_state_publisher_gui"/>
+
+  <node pkg="rviz2" exec="rviz2" output="screen"/>
 </launch>
 ```
 
 编译后启动
+
 ```bash
 ros2 launch my_robot_description display.launch.xml
 ```
 
 1. 点击右下角 Add 添加 RobotModel，填写 Description Topic 为 `/robot_description`
 2. 修改 fixed frame 为 base_link
-3. 点击右下角 Add 添加 TF 
+3. 点击右下角 Add 添加 TF
 
 可以看到机器人模型可以正常显示了，保存当前 rviz 配置，命名为`urdf_config.rviz`，放在`rviz/`目录下，之后 launch 文件就可以直接加载这个配置了
+
 ```xml
 <let name="rviz_config_path" value="$(find-pkg-share my_robot_description)/rviz/urdf_config.rviz"/>
 <node pkg="rviz2" exec="rviz2" output="screen" args="-d $(var rviz_config_path)"/>
@@ -217,24 +258,24 @@ ros2 launch my_robot_description display.launch.xml
 在 MoveIt 中，运动规划时会考虑碰撞检测，因此需要为机器人模型添加碰撞体
 
 visual 元素用于可视化，collision 元素用于碰撞检测（碰撞体），两者都要包含geometry 和 origin 元素，其中 visaul 和 collision 的 geometry 可以相同，也可以不同，一般要求 collision 的几何体比 visual 的几何体更简单，简化计算，例如：
-```xml
 
-    <link name="shoulder_link">
-	    <visual>
-			<geometry>
-				<cylinder length="0.5" radius="0.1"/>
-			</geometry>
-			<origin xyz="0 0 0.25" rpy="0 0 0"/>
-			<material name="blue"/>
-		</visual>
-		<collision>
-			<geometry>
-        <!-- 碰撞体使用简单的 box -->
-				<box size="0.2 0.2 0.5"/>
-			</geometry>
-			<origin xyz="0 0 0.25" rpy="0 0 0"/>
-		</collision>
-	</link>
+```xml
+<link name="shoulder_link">
+  <visual>
+    <geometry>
+      <cylinder length="0.5" radius="0.1"/>
+    </geometry>
+    <origin xyz="0 0 0.25" rpy="0 0 0"/>
+    <material name="blue"/>
+  </visual>
+  <collision>
+    <geometry>
+      <!-- 碰撞体使用简单的 box -->
+      <box size="0.2 0.2 0.5"/>
+    </geometry>
+    <origin xyz="0 0 0.25" rpy="0 0 0"/>
+  </collision>
+</link>
 ```
 
 ### MoveIt Configuration
@@ -245,11 +286,13 @@ Create `my_robot_moveit_config` manually, or use the MoveIt Setup Assistant to a
 - [使用Assistant配置](https://www.bilibili.com/video/BV1rdxdzkES5?p=19)
 
 启动 MoveIt Setup Assistant，创建 MoveIt 配置包
+
 ```bash
 ros2 launch moveit_setup_assistant setup_assistant.launch.py
 ```
 
 文件结构：
+
 ```bash
 my_robot_moveit_config/
   config/
@@ -268,6 +311,7 @@ my_robot_moveit_config/
 ```
 
 编译后运行
+
 ```bash
 ros2 launch my_robot_moveit_config demo.launch.py
 # 报错
@@ -275,7 +319,10 @@ ros2 launch my_robot_moveit_config demo.launch.py
 ```
 
 这是因为在`joint_limits.yaml`的`max_velocity`定义为整数，而 MoveIt 期望它是一个 double 类型的值，解决方法是将`joint_limits.yaml`的`max_velocity`定义修改为 double 类型，借此机会，修改`joint_limits.yaml`添加加速度限制：
+
 ```yaml
+  default_velocity_scaling_factor: 0.1 # 默认速度缩放因子，表示实际速度为最大速度的百分之多少，值越小，运动越慢
+  default_acceleration_scaling_factor: 0.1 # 默认加速度缩放因子，表示实际加速度为最大加速度的百分之多少，值越小，运动越平滑
   # joint1:
   # ...
   joint6:
@@ -286,6 +333,7 @@ ros2 launch my_robot_moveit_config demo.launch.py
 ```
 
 重新编译后运行，发现动作无法正常执行，原因是控制器命名空间出错，解决方法是在`moveit_controllers.yaml`中添加：
+
 ```yaml
   arm_controller:
     type: FollowJointTrajectory
@@ -311,7 +359,9 @@ ros2 launch my_robot_moveit_config demo.launch.py
 ### Add gripper
 
 重点：
+
 - gripper 的其中一个 joint 需要添加 mimic 标签，表示它的运动模仿另一个 joint 的运动，例如：
+
   ```xml
       <joint name="gripper_left_finger_joint" type="prismatic">
           <parent link="gripper_base_link"/>
@@ -331,22 +381,24 @@ ros2 launch my_robot_moveit_config demo.launch.py
           <limit effort="1000.0" velocity="1.0" lower="-0.06" upper="0.0"/>
       </joint>
   ```
+
   在实际应用中，gripper 的两个 finger 可能是通过一个电机驱动的，因此在程序中只需要控制一个变量，简化控制逻辑
 - 将夹爪添加至现有框架：
   1. 将`gripper.xacro` include 到`my_robot.urdf.xacro`中，移动`material`标签至`common_properities.xacro`中，并在`my_robot.urdf.xacro`中定义一个fixed joint 将 gripper 连接到`arm.xacro`中定义的空link: `tool_link`上
   2. 使用 MoveIt Setup Assistant 更新设置
-    - 工作空间下运行`ros2 launch moveit_setup_assistant setup_assistant.launch.py`，选择"Edit Existing MoveIt Configuration Package”，选择之前配置生成的包
-    - Regenerate Collision Matrix
-    - Add a planning group for the gripper, choose no kinematic slover, and add gripper joints to the group
-    - Create a few poses: gripper_open, gripper_closed, gripper_half_closed
-    - Add an end effector(末端执行器)
-    - Add ros2_control state interface for gripper_left_finger_joint
-    - Add a ROS 2 and Moveit controller for the gripper (follow joint
+
+  - Regenerate Collision Matrix
+  - Add a planning group for the gripper, choose no kinematic slover, and add gripper joints to the group
+  - Create a few poses: gripper_open, gripper_closed, gripper_half_closed
+  - Add an end effector(末端执行器)
+  - Add ros2_control state interface for gripper_left_finger_joint
+  - Add a ROS 2 and Moveit controller for the gripper (follow joint
 trajectory)
 
 ## Write launch file for MoveIt
 
 编写自己的launch文件用于启动 MoveIt，创建功能包`my_robot_bringup`
+
 ```bash
 cd ~/moveit2_ws/src
 ros2 pkg create my_robot_bringup
@@ -356,6 +408,7 @@ mkdir launch config
 ```
 
 在包内 CMakeLists.txt 中删除 build 部分，添加 install 部分：
+
 ```cmake
 install(
   DIRECTORY launch config
@@ -371,42 +424,59 @@ install(
 下面先按顺序启动各个节点，了解总体流程，再编写最终的 launch 文件：
 
 1. 启动 robot_state_publisher 节点，发布机器人状态信息
+
    ```bash
    ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_description:="$(xacro /home/bernard/moveit2_ws/src/my_robot_description/urdf/my_robot.urdf.xacro)"
-   ````
-2. 启动 ros2_control_node 节点，加载控制器配置文件
+   ```
+
+1. 启动 ros2_control_node 节点，加载控制器配置文件
+
    ```bash
    ros2 run controller_manager ros2_control_node --ros-args --params-file ~/moveit2_ws/src/my_robot_bringup/config/ros2_controllers.yaml
    ```
+
    发现终端没有显示 "Loading hardware"，可能是因为 controller_manager 在寻找私有命名空间下的参数或话题，而 robot_state_publisher 发布的是全局命名空间的话题
-   - 解决方法1：重定向话题
-     ```bash
-     ros2 run controller_manager ros2_control_node --ros-args -r /controller_manager/robot_description:=/robot_description --params-file ~/moveit2_ws/src/my_robot_bringup/config/ros2_controllers.yaml
-     ```
-   - 解决方法2：直接将 URDF 解析结果作为参数 param 传入:
-     ```bash
-     ros2 run controller_manager ros2_control_node --ros-args -p robot_description:="$(xacro /home/bernard/moveit2_ws/src/my_robot_description/urdf/my_robot.urdf.xacro)" --params-file ~/moveit2_ws/src/my_robot_bringup/config/ros2_controllers.yaml
-     ```
+
+    - 解决方法1：重定向话题
+
+      ```bash
+      ros2 run controller_manager ros2_control_node --ros-args -r /controller_manager/robot_description:=/robot_description --params-file ~/moveit2_ws/src/my_robot_bringup/config/ros2_controllers.yaml
+      ```
+
+    - 解决方法2：直接将 URDF 解析结果作为参数 param 传入:
+
+      ```bash
+      ros2 run controller_manager ros2_control_node --ros-args -p robot_description:="$(xacro /home/bernard/moveit2_ws/src/my_robot_description/urdf/my_robot.urdf.xacro)" --params-file ~/moveit2_ws/src/my_robot_bringup/config/ros2_controllers.yaml
+      ```
+
      但使用该方法系统会提示该方式已弃用
-3. 启动控制器
+
+1. 启动控制器
+
    ```bash
    ros2 run controller_manager spawner joint_state_broadcaster
    ros2 run controller_manager spawner arm_controller
    ros2 run controller_manager spawner gripper_controller
    ```
-4. 启动 move_group 节点，提供运动规划服务
+
+1. 启动 move_group 节点，提供运动规划服务
+
    ```bash
    ros2 launch my_robot_moveit_config move_group.launch.py
    ```
-5. 启动 rviz2
+
+1. 启动 rviz2
+
    ```bash
    ros2 run rviz2 rviz2 -d ~/moveit2_ws/src/my_robot_description/rviz/urdf_config.rviz
    ```
+
    Add MotionPlanning 模块，点击`context`选择 Planing library 为`OMPL`，之后应该可以进行运动规划了
 
 编写最终 launch 文件`my_robot_bringup/launch/bringup.launch.xml`，最终内容见下文
 
 在编写较复杂的 launch 文件后，建议将引用的包添加至`package.xml`的依赖列表中，这样在编译时会检查依赖是否齐全，如果缺失就会自动安装，安装不了则报错，避免运行时才发现缺少依赖包：
+
 ```xml
 <exec_depend>my_robot_description</exec_depend>
 <exec_depend>robot_state_publisher</exec_depend>
@@ -416,6 +486,7 @@ install(
 ```
 
 编译后运行
+
 ```bash
 ros2 launch my_robot_bringup bringup.launch.xml
 ```
@@ -424,17 +495,20 @@ ros2 launch my_robot_bringup bringup.launch.xml
 
 这是因为在`my_robot.urdf.xacro`中引用了`my_robot.ros2_control.xacro`，导致URDF解析失败，具体原因不详，很奇怪，通过命令行运行时可以正常解析，但是launch文件中就不行
 
-解决方法：参考`my_robot_moveit_config/config/my_robot.urdf.xacro `的写法，创建`my_robot_description/urdf/my_robot.xacro`，内容如下：
+解决方法：参考`my_robot_moveit_config/config/my_robot.urdf.xacro`的写法，创建`my_robot_description/urdf/my_robot.xacro`，内容如下：
+
 ```xml
 <?xml version="1.0"?>
 <robot name="my_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
-	<xacro:include filename="$(find my_robot_description)/urdf/my_robot.urdf.xacro" />
-	<xacro:include filename="$(find my_robot_description)/urdf/my_robot.ros2_control.xacro" />
+  <xacro:include filename="$(find my_robot_description)/urdf/my_robot.urdf.xacro" />
+  <xacro:include filename="$(find my_robot_description)/urdf/my_robot.ros2_control.xacro" />
 </robot>
 ```
+
 记得取消`my_robot.urdf.xacro`中对`my_robot.ros2_control.xacro`的引用
 
 最终的 launch 文件内容如下：
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
@@ -463,6 +537,7 @@ ros2 launch my_robot_bringup bringup.launch.xml
 ## Moveit cpp API
 
 创建功能包`my_robot_commander_cpp`，编写测试 moveit cpp API 的代码
+
 ```bash
 ros2 pkg create my_robot_commander_cpp --build-type ament_cmake --dependencies rclcpp
 cd my_robot_commander_cpp/src
@@ -470,6 +545,7 @@ touch test_moveit.cpp # 测试 moveit cpp API
 ```
 
 test_moveit.cpp：
+
 ```cpp
 #include <rclcpp/rclcpp.hpp>
 #include <moveit/move_group_interface/move_group_interface.h>
@@ -510,6 +586,7 @@ int main(int argc, char **argv)
 ```
 
 添加以下内容到 CMakeLists.txt 中
+
 ```cmake
 # find dependencies
 find_package(ament_cmake REQUIRED)
@@ -527,20 +604,23 @@ install(TARGETS
 ```
 
 添加以下内容到 package.xml 中
+
 ```xml
 <exec_depend>moveit_ros_planning_interface</exec_depend>
 ```
 
 编译后运行
+
 ```bash
 ros2 launch my_robot_bringup bringup.launch.xml
 # 另开终端
 ros2 run my_robot_commander_cpp test_moveit
 ```
+
 可以看到机械臂依次运动到预定义的两个位置
 
-
 上面的代码使用预设的`pose`进行运动规划，还可以通过设置各关节的目标值进行运动规划，例如：
+
 ```cpp
 // 设置目标关节值，填入各关节的目标位置，顺序应与 urdf 中定义的关节顺序一致
 std::vector<double> joints = {1.5, 0.5, 0.0, 1.5, 0.0, -0.7};
@@ -550,6 +630,7 @@ arm.setJointValueTarget(joints);
 ```
 
 还可以通过设置目标位姿进行运动规划，例如：
+
 ```cpp
 // 生成四元数，表示末端执行器的姿态，使用 tf2 库将欧拉角转换为四元数
 tf2::Quaternion q;
@@ -570,9 +651,10 @@ arm.setPoseTarget(target_pose);
 // 进行规划并执行
 ```
 
-### Cartesian path planning
+### Cartesian path planning (C++)
 
 使用笛卡尔路径规划，需要我们定义轨迹`trajectory`
+
 ```cpp
 // 上文已定义 pose
 // Cartesian Path
@@ -592,7 +674,7 @@ moveit_msgs::msg::RobotTrajectory trajectory; // 定义轨迹对象
 // computeCartesianPath() 计算笛卡尔路径，返回成功规划的路径点占总路径点的比例，参数依次为：路径点列表、每个路径点之间的最大距离、跳跃阈值、轨迹对象、是否启用避障
 double fraction = arm.computeCartesianPath(waypoints, 0.01, 0.0, trajectory, true); // 第二个参数越小，规划的路径越接近直线
 // 如果成功规划的路径点占总路径点的比例为 1，则执行轨迹
-if (fraction == 1) {
+if (fraction > 0.99) { // 这里使用 0.99 而不是 1 是为了容错，避免由于数值误差导致的规划失败
     arm.execute(trajectory);
 }
 ```
@@ -602,6 +684,7 @@ if (fraction == 1) {
 使用 MoveIt cpp API 编写一个面向对象的 ROS 2 节点
 
 首先编写一个基本的 ROS2 节点，将节点命名为 `Commander`，在`my_robot_commander_cpp/src/commander_template.cpp`中编写以下代码
+
 ```cpp
 #include <rclcpp/rclcpp.hpp>
 #include <moveit/move_group_interface/move_group_interface.h>
@@ -619,6 +702,7 @@ int main(int argc, char **argv)
 和之前的`test_moveit.cpp`相比，这个节点在主线程直接调用了`rclcpp::spin()`，而没有创建单独的线程来运行执行器，那么代码会阻塞在`spin()`函数上，无法继续执行后续的 MoveIt 相关代码，可以通过订阅一个话题来执行相关代码
 
 下面编写`Commander`类，将 MoveIt 相关的代码封装在类的成员函数中，订阅一个话题用于控制夹爪的开合，代码如下：
+
 ```cpp
 #include <rclcpp/rclcpp.hpp>
 #include <moveit/move_group_interface/move_group_interface.h>
@@ -717,6 +801,7 @@ private:
 ```
 
 在 main 函数中创建 Commander 对象并调用成员函数测试
+
 ```cpp
 // auto node = std::make_shared<rclcpp::Node>("commander");
 auto commander = Commander(node);
@@ -724,6 +809,7 @@ auto commander = Commander(node);
 ```
 
 在package.xml中添加依赖，在 CMakeLists.txt 中添加可执行文件和依赖
+
 ```cmake
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -744,6 +830,7 @@ install(TARGETS
 ```
 
 编译后运行
+
 ```bash
 ros2 launch my_robot_bringup bringup.launch.xml
 # 另开终端
@@ -757,6 +844,7 @@ ros2 topic pub -1 /cmd_gripper example_interfaces/msg/Bool "{data: false}" # 发
 现在我们想增加更多的订阅话题，实现通过 joints value 和 target pose 控制机械臂运动的功能
 
 对于 joints value 首先要选定话题消息类型，使用`example_interfaces/msg/Flaot64MultiArray`
+
 ```cpp
 // 1. 引用消息类型
 #include <example_interfaces/msg/float64_multi_array.hpp>
@@ -777,13 +865,15 @@ void jointCmdCallback(const FloatArray &msg)
 joint_cmd_sub_ = node_->create_subscription<FloatArray>("cmd_joint", 10, std::bind(&Commander::jointCmdCallback, this, _1));
 ```
 
-### Custom Message
+#### Custom Message
 
 对于 target pose ，使用`geometry_msgs/msg/PoseStamped`将无法覆盖`bool cartesian_path`，此外，在上面的两个话题中，我们使用了example_interfaces，在实际应用中不应使用示例消息，而是使用自定义消息(在ROS2中，我们使用 interface 统称msg, srv, action)
+
 - [interface 列表](https://github.com/ros2/common_interfaces)
 - [自定义消息](https://roboticsbackend.com/ros2-create-custom-message/)
 
 创建消息包：
+
 ```bash
 cd ~/moveit2_ws/src
 ros2 pkg create my_robot_interfaces
@@ -793,6 +883,7 @@ mkdir -p msg
 ```
 
 package.xml
+
 ```xml
 <!-- 添加 -->
   <buildtool_depend>rosidl_default_generators</buildtool_depend>
@@ -802,6 +893,7 @@ package.xml
 ```
 
 CMakeLists.txt
+
 ```cmake
 # 添加
 find_package(rosidl_default_generators REQUIRED)
@@ -812,6 +904,7 @@ ament_export_dependencies(rosidl_default_runtime)
 ```
 
 创建消息文件：`msg/PoseCommand.msg`
+
 ```msg
 float64 x
 float64 y
@@ -823,6 +916,7 @@ bool cartesian_path
 ```
 
 编译后测试：
+
 ```bash
 colcon build --packages-select my_robot_interfaces
 source install/setup.bash
@@ -832,12 +926,14 @@ ros2 interface show my_robot_interfaces/msg/PoseCommand
 在使用自定义消息之前，在`.vscode/c_cpp_properties.json`中的`includePath`中添加: `"/home/bernard/moveit2_ws/install/my_robot_interfaces/include/**"`
 
 还需要在`my_robot_commander_cpp/package.xml`中添加`my_robot_interfaces`的依赖，`my_robot_commander_cpp/CMakeLists.txt`中添加：
+
 ```cmake
 find_package(my_robot_interfaces REQUIRED)
 ament_target_dependencies(commander rclcpp moveit_ros_planning_interface example_interfaces my_robot_interfaces)
 ```
 
 按照之前所述添加Subscriber的流程，订阅`"cmd_pose"`，定义回调函数如下：
+
 ```cpp
 void poseCmdCallback(const PoseCmd &msg)
 {
@@ -846,6 +942,7 @@ void poseCmdCallback(const PoseCmd &msg)
 ```
 
 编译后运行：
+
 ```bash
 ros2 launch my_robot_bringup bringup.launch.xml
 # 另开终端
@@ -861,24 +958,21 @@ ros2 topic pub -1 /cmd_pose my_robot_interfaces/msg/PoseCommand "{x: 0.7, y: 0.0
 ## MoveIt python API
 
 Pros:
+
 - It's Python
 
 Cons:
+
 - Not as complete as the C++ API，且只是对C++的封装
 - No documentation
 - Will it be maintained in the future?
 
 创建`my_robot_commander_py`包
+
 ```bash
 cd ~/moveit2_ws/src
 ros2 pkg create my_robot_commander_py --build-type ament_python --dependencies rclpy
 ```
-
-## Planning around objects
-
-- [planning_around_objects](https://moveit.picknik.ai/main/doc/tutorials/planning_around_objects/planning_around_objects.html)
-
-## MoveIt task constructor
 
 ## Connect MoveIt to Hardware
 
@@ -898,20 +992,359 @@ graph LR
 
 迄今为止，我们已经实现了 Commander 到 MoveIt 的通信，让我们先分析一下当前的节点图：
 
-<img src="./image/MoveIt学习笔记/control_rosgraph.png" style="zoom:200%;">
+<img src="./image/MoveIt2/control_rosgraph.png" alt="MoveIt 2 control ROS graph" style="zoom:200%;">
 
 - 在 controller_manager 中加载(spawn)的控制器：arm_controller、gripper_controller 通过 follow_joint_trajectory 控制接口与 moveit_simple_controller_manager 进行通信，（moveit_simple_controller_manager 再通过 ros2_control 标签中定义的 interface 与底层控制器通信，在当前，这个 interface 为 mock_components）
 - commander 节点通过调用 API 与 move_group 通信，发出请求，move_group 进行 plan 、execute 等操作
 - joint_state_publisher 节点收集并发布 joint_states，传递给 robot_state_publisher，robot_state_publisher 发布 robot_description 话题，提供给 rviz 与 controller_manager
 
-对于开环控制的舵机机械臂，可以订阅`/joint_states`话题，获取当前关节状态，转换为串口命令，发送给舵机，控制机械臂。
+对于开环控制的舵机机械臂，可以订阅`/joint_states`话题，获取当前关节状态，转换为串口命令，发送给舵机，控制机械臂。在`my_robot_joints_subscriber`包中实现了通过节点订阅`/joint_states`，获取当前 joints position
+
 一般情况下，则需要将硬件接口接入 MoveIt
 
+## Planning Scene
 
+- [tutorial planning_around_objects 使用PlanningSceneInterface，提供了FurtherReading](https://moveit.picknik.ai/main/doc/tutorials/planning_around_objects/planning_around_objects.html)
+-[tutorial planning_scene_monitor](https://www.ncnynl.com/ros2docs/cn/moveit2/doc/examples/planning_scene_monitor/planning_scene_monitor_tutorial.html)
+-[tutorial planning_scene_ros_api](https://www.ncnynl.com/ros2docs/cn/moveit2/doc/examples/planning_scene_ros_api/planning_scene_ros_api_tutorial.html)
 
+- PlanningScene 类是包含 RobotState 和任意数量的碰撞对象的世界快照。PlanningScene可用于碰撞检查以及获取有关环境的信息
+- PlanningSceneMonitor 类使用 ROS 接口包装 PlanningScene，以使 PlanningScene 保持最新状态
+- PlanningSceneInterface 类是 MoveIt 中用于管理和更新规划场景的接口，提供了添加、删除、修改场景中物体和环境信息的功能，相较于PlanningScene，PlanningSceneInterface 提供了更高层次的抽象，简化了与规划场景交互的过程，适用于大多数常见的场景管理任务
 
+### Add an object into the environment
 
-## OMPL constrained planning
+```cpp
+#include <moveit/move_group_interface/move_group_interface.h>
+#include <shape_msgs/msg/solid_primitive.hpp>
+#include <moveit_msgs/msg/collision_object.hpp>
+#include <geometry_msgs/msg/pose.hpp>
 
-- [ompl_constrained_planning](https://moveit.picknik.ai/main/doc/how_to_guides/using_ompl_constrained_planning/ompl_constrained_planning.html)
+//定义一个lambda函数，直接赋值给collision_box变量
+auto const collision_box = [frame_id = <MoveGroupName>.getPlanningFrame()]() {
+    geometry_msgs::msg::Pose box_pose;
+    box_pose.orientation.w = 1.00;
+    box_pose.position.x = 0.00;
+    box_pose.position.y = 0.50;
+    box_pose.position.z = 0.60;
 
+    shape_msgs::msg::SolidPrimitive primitive;
+    primitive.type = primitive.BOX;
+    primitive.dimensions.resize(3);
+    primitive.dimensions[primitive.BOX_X] = 0.30;
+    primitive.dimensions[primitive.BOX_Y] = 0.10;
+    primitive.dimensions[primitive.BOX_Z] = 0.30;
+
+    moveit_msgs::msg::CollisionObject collision_object;
+    collision_object.id = "box";
+    collision_object.header.frame_id = frame_id.empty() ? "base_link" : frame_id;
+    collision_object.primitives.push_back(primitive);
+    collision_object.primitive_poses.push_back(box_pose);
+    collision_object.operation = collision_object.ADD;
+    return collision_object;
+}();
+```
+
+```python
+from geometry_msgs.msg import Pose
+from shape_msgs.msg import SolidPrimitive
+from moveit_msgs.msg import CollisionObject
+
+def _make_collision_box(self, object_id:str, dimensions:list[float], pose_values:list[float])->CollisionObject:
+    pose = Pose()
+    pose.position.x = float(pose_values[0])
+    pose.position.y = float(pose_values[1])
+    pose.position.z = float(pose_values[2])
+    pose.orientation.x = float(pose_values[3])
+    pose.orientation.y = float(pose_values[4])
+    pose.orientation.z = float(pose_values[5])
+    pose.orientation.w = float(pose_values[6])
+
+    primitive = SolidPrimitive()
+    primitive.type = SolidPrimitive.BOX
+    primitive.dimensions = [float(dimensions[0]), float(dimensions[1]), float(dimensions[2])]
+
+    collision_object = CollisionObject()
+    collision_object.id = object_id
+    collision_object.header.frame_id = self.frame_id
+    collision_object.primitives.append(primitive)
+    collision_object.primitive_poses.append(pose)
+    collision_object.operation = CollisionObject.ADD
+    return collision_object
+
+collision_box = _make_collision_box("box", [0.3, 0.1, 0.3], [0.0, 0.5, 0.6, 0.0, 0.0, 0.0, 1.0])
+```
+
+从上面的示例代码中可以看出构造碰撞体的一般步骤：
+
+1. 设置物体的 ID 和参考坐标系（frame_id）
+2. 定义物体的位姿位置和姿态，通常使用 geometry_msgs/Pose 消息类型
+3. 定义物体的形状和尺寸，通常使用 shape_msgs/SolidPrimitive 消息类型
+   - type类型包括 BOX、SPHERE、CYLINDER 和 CONE(锥体)
+   - demensions 数组的长度和含义取决于 type，例如 BOX 需要三个维度（长、宽、高），SPHERE 需要一个维度（半径），CYLINDER 需要两个维度（半径和高度）
+4. 创建一个 moveit_msgs/CollisionObject 消息对象，填入物体的 ID、参考坐标系、形状和位姿信息，并设置操作类型（例如 ADD、REMOVE、MOVE等）
+
+构造好碰撞体变量后，将其添加至场景中的最简步骤：
+
+1. 创建 PlanningSceneInterface 对象
+2. 设置碰撞体的操作类型为 ADD，此步骤在上面的代码中已经完成
+3. 调用 applyCollisionObject() 方法将碰撞体添加到场景中
+
+```cpp
+#include <moveit/planning_scene_interface/planning_scene_interface.h>
+moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
+planning_scene_interface.applyCollisionObject(collision_box);
+```
+
+在python(moveit2)中，不存在PlanningSceneInterface这个类，需要走 PlanningScene 消息 + /apply_planning_scene 服务的方式来更新场景
+
+### Attach or detach an object from the robot
+
+附加一个对象需要两个操作
+
+1. 从环境中移除原始对象
+2. 将物体连接到机器人
+
+### Remove the object from the collision world
+
+## Pipeline
+
+在 MoveIt2 中，管线（Pipeline）是指一系列连续的处理步骤，用于完成特定的任务，例如运动规划、碰撞检测、路径优化等。每个步骤都可以看作是一个独立的模块，负责处理输入数据并生成输出结果，这些模块可以组合在一起形成一个完整的处理流程
+
+### Planning Pipeline
+
+Planning Pipeline 将**规划器插件**与**适配器插件**串联成一个连贯的运动规划工作流。它在[planning_pipeline](https://github.com/moveit/moveit2/blob/main/moveit_ros/planning/planning_pipeline/src/planning_pipeline.cpp)中实现，使用 ROS2 的 pluginlib 进行运行时插件加载，这意味着你可以完全通过配置来替换规划器或添加前/后处理适配器，无需重新编译
+
+Planning Pipeline 分三个连续阶段处理规划请求，其实现在`PlanningPipeline::generatePlan`函数中：
+
+```mermaid
+graph LR
+  A[MotionPlanRequest] --> B
+  subgraph B[预处理]
+    B1[请求适配器 1<br/>例如: 解析工作空间边界] --> B2[请求适配器 2<br/>例如: 验证约束] --> B3[请求适配器 N]
+  end
+  B --> C
+  subgraph C[规划]
+    C1[PlannerManager 插件<br/>例如: OMPL, Pilz]
+  end
+  C --> D
+  subgraph D[后处理]
+    D1[响应适配器 1<br/>例如: 时间参数化] --> D2[响应适配器 2<br/>例如: 碰撞检查] --> D3[响应适配器 N]
+  end
+  D --> E[MotionPlanResponse]
+```
+
+- 预处理阶段：PlanningRequestAdapters 对输入的 MotionPlanRequest 进行修改或增强，例如解析工作空间边界、验证约束条件等。默认的适配器配置见[default_request_adapters_plugin_description.xml](https://github.com/moveit/moveit2/blob/main/moveit_ros/planning/default_request_adapters_plugin_description.xml)，该xml文件利用了 pluginlib 的机制，即通过配置文件指定从库中加载哪些适配器插件类
+- 规划阶段：PlannerManager 加载[[Moveit2#运动规划器]]进行规划，支持加载多个规划器插件依次尝试——前一个规划器的解作为后一个的参考轨迹（通过 trajectory_constraints 传递）
+- 后处理阶段：PlanningResponseAdapters 对规划结果进行修改或增强，例如rviz可视化、碰撞检查等，然后生成 MotionPlanResponse，即最终的规划结果。默认的适配器配置见[default_response_adapters_plugin_description.xml](https://github.com/moveit/moveit2/blob/main/moveit_ros/planning/default_response_adapters_plugin_description.xml)
+
+## 运动规划器
+
+MoveIt2 内置支持 4 种运动规划器插件，代码见[moveit_planners](https://github.com/moveit/moveit2/tree/main/moveit_planners):
+
+- **OMPL** — 采样型规划器
+  最常用的规划器，内含大量采样算法：RRT、RRT*、PRM、BIT*、FMT、KPIECE 等。适合通用场景，对复杂约束和自由空间搜索能力强，但路径质量依赖后处理平滑
+- **CHOMP** — 协变梯度优化器
+  基于协变哈密顿优化的轨迹优化方法。从一条初始轨迹出发，通过梯度下降迭代优化，减少碰撞代价和光滑性代价。适合对初始路径做局部优化，但容易陷入局部极小值
+- **STOMP** — 随机轨迹优化器
+  基于随机扰动的轨迹优化方法。不依赖梯度，通过在当前轨迹附近添加噪声采样多条候选轨迹，选取代价最小的更新。无需梯度意味着可以处理不可导的代价函数，且天然避局部极小值
+- **Pilz 工业规划器**
+  专为工业场景设计的确定性规划器，支持：
+  - PTP（点到点运动）
+  - LIN（直线插补）
+  - CIRC（圆弧插补）
+  不采样、不优化——直接计算解析轨迹，可重复性强，适合工业重复作业
+
+| 规划器 | 类型 | 路径质量 | 可重复性 | 适用场景 |
+| --- | --- | --- | --- | --- |
+| OMPL | 采样型 | 中等（需后处理） | 不确定性 | 通用、复杂环境 |
+| CHOMP | 梯度优化 | 较好 | 确定性 | 路径平滑、避障优化 |
+| STOMP | 随机优化 | 较好 | 不确定性 | 不可导代价函数、避局部极小值 |
+| Pilz | 解析计算 | 最优 | 完全确定性 | 工业重复作业（PTP/LIN/CIRC） |
+
+所有这些插件都继承自基类：`planning_interface::PlannerManager`，由 Planning Pipeline 在运行时通过 pluginlib 动态加载
+
+当 OMPL 等采样规划器需要为目标约束（如"末端到达某个位姿"）生成合法的关节空间配置时，它调用`ConstraintSampler`，而`ConstraintSampler`内部调用 [[MoveIt2#IK 求解器]]
+
+## IK 求解器
+
+IK 求解器（Inverse Kinematics Solver）是运动规划中的一个关键组件，负责将末端执行器的目标位姿转换为机器人关节空间的配置。MoveIt2 内置了 4 种 IK 求解器插件，全部继承自基类[kinematics::KinematicsBase](https://github.com/moveit/moveit2/blob/main/moveit_core/kinematics_base/src/kinematics_base.cpp)，这个基类定义了 IK 求解器的核心接口
+
+内置的 IK 求解器插件见[moveit_kinematics](https://github.com/moveit/moveit2/tree/main/moveit_kinematics)，包括：
+
+- kdl_kinematics_plugin/KDLKinematicsPlugin
+- ikfast_kinematics_plugin/IKFastKinematicsPlugin
+- cached_ik_kinematics_plugin/CachedIKKinematicsPlugin
+- srv_kinematics_plugin/SRVKinematicsPlugin
+
+除了这些内置插件，还有第三方插件，例如[trac_ik_kinematics_plugin](https://bitbucket.org/traclabs/trac_ik/src/rolling/)，trac-ik 通过结合 KDL 和 SQP（Sequential Quadratic Programming），并行运行多个求解器实例，提供了更快的求解速度和更高的成功率，尤其适用于冗余机械臂和复杂约束场景。其部署参考[trac_ik_tutorial](https://moveit.picknik.ai/main/doc/how_to_guides/trac_ik/trac_ik_tutorial.html)
+
+### IK 求解器插件配置
+
+运动学插件通过 Moveit Setup Assistant 生成的 kinematics.yaml 进行配置。典型的配置块指定了插件类、它服务的规划组以及特定于求解器的参数：
+
+```yaml
+<move_group_name>:
+  kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
+  kinematics_solver_search_resolution: 0.005
+  kinematics_solver_timeout: 0.05
+  kinematics_solver_attempts: 3
+```
+
+- kinematics_solver_search_resolution：冗余关节的离散搜索步长，单位是弧度。这个参数只在机械臂有冗余关节（即 DOF > 6）时才有实质意义。KDL 会把冗余关节在其关节范围内按这个步长离散采样，对每个固定值求解其余关节的 IK。步长越小，搜索越密集，找到解的概率越高，但耗时也越长
+- kinematics_solver_timeout: 单次 IK 求解的时间上限，单位是秒。直接对应 KDL 的`searchPositionIK()`里的超时循环，在这个时间窗口内，KDL 会：
+  - 第 1 次用给定的 seed state 迭代求解
+  - 失败后随机生成新的 seed，继续迭代
+  - 直到找到解或超时
+- kinematics_solver_attempts: 这个参数 KDL 插件本身并不读取，它是 KinematicsPluginLoader 读取的参数，含义是在超时后，上层最多再重新发起几次完整的 IK 调用。每次调用都是一个新的、完整的 timeout 时间窗口。因此总的 IK 求解时间上限 = kinematics_solver_timeout * (1 + kinematics_solver_attempts)
+
+### 5-DOF 机械臂的 IK 求解
+
+5-DOF 机械臂由于缺乏一个自由度，无法在所有情况下找到满足末端位姿的解，因此 IK 求解器可能会失败。解决方法包括：
+
+- 给机械臂模型添加一个虚拟关节，补齐末端执行器的自由度，使其成为 6-DOF 机械臂，从而使 IK 求解器能够找到解。这样做的缺点是你需要在实际控制时忽略这个虚拟关节的运动，此外虚拟关节的运动不对应任何真实连杆运动，可能产生规划上合法但执行上不可达的轨迹
+- 在规划时放宽约束，例如只约束位置而非姿态，或者允许一定的姿态误差，以增加 IK 求解成功的概率
+  - 只约束位置：默认的 KDL 求解器支持只约束位置的 IK 求解，可以在 kinematics.yaml 配置中设置 `position_only_ik: true` 来启用位置约束模式，或者将`setPoseTarget()`替换为`setPositionTarget()`来只设置位置目标
+  - 允许姿态误差：可以在 kinematics.yaml 中设置 `orientation_vs_position: 0.1`，降低姿态权重。也可以在规划请求中设置 `goal_constraints` 的 `position_constraints` 和 `orientation_constraints`，并为姿态约束设置较大的容忍度（tolerance），以增加 IK 求解成功的概率。也可以选择只指定某一个姿态分量的约束，例如只约束 roll 角，而不约束 pitch 和 yaw，实现方法是创建一个 `orientation_constraints`，但只设置 roll 角的约束，并将 pitch 和 yaw 的约束设置为较大的容忍度
+  - 一些辅助措施：
+    - 适当增大 `kinematics_solver_timeout`，给 KDL 更多时间做随机重采样，`kinematics_solver_attempts`也可以适当增加，进一步提高成功率
+    - 注意`setPoseTarget()`或`setPositionTarget()`会让 MoveIt 在规划阶段继续做 IK 采样，为了增加成功率，可以在 IK 求解器计算出关节解后，直接使用 `setJointValueTarget()` 来设置关节目标，跳过 IK 采样阶段
+
+## MoveIt Task Constructor
+
+- [tutorial moveit_task_constructor](https://moveit.picknik.ai/main/doc/concepts/moveit_task_constructor/moveit_task_constructor.html)
+- [Pick and Place with MoveIt Task Constructor](https://moveit.picknik.ai/main/doc/tutorials/pick_and_place_with_moveit_task_constructor/pick_and_place_with_moveit_task_constructor.html)
+- [github moveit_task_constructor](https://github.com/moveit/moveit_task_constructor/tree/ros2/)
+
+MoveIt任务构建器（MTC）框架帮助将复杂的规划任务拆解为多个相互依赖的Stage，使用MoveIt来解决Stage，Stage中的信息会通过InterfaceState对象传递
+
+![MoveIt Task](./image/MoveIt2/mtc_task.png)
+
+每个Stage都有不同的功能，可以分为三个阶段：
+
+- Generator stage: 生成初始运动轨迹或状态，为后续阶段提供初始条件
+- Propagator stage: 在不同阶段之间传播状态信息，进行状态转换，例如从关节空间转换到笛卡尔空间
+- Connector stage: 连接不同的Stage，实现信息的传递和转换
+
+API：
+
+官方 API 文档入口：
+
+- [MTC API reference](https://moveit.github.io/moveit_task_constructor/api.html)
+- [MTC C++ API (Doxygen)](https://moveit.github.io/moveit_task_constructor/_static/index.html)
+- [MoveIt 2 API 主页](https://moveit.picknik.ai/main/doc/api/api.html)
+- [MTC msgs (ROS 2 Rolling)](https://docs.ros.org/en/rolling/p/moveit_task_constructor_msgs/)
+
+### Core API（`moveit::task_constructor`）
+
+- Task / Stage 框架
+  - `Task`：任务入口，负责 `init()`、`plan()`、`execute()`、`solutions()`
+  - `Stage`：所有 Stage 的基类
+  - `ContainerBase` / `SerialContainer` / `ParallelContainerBase`：容器与组合
+  - `Alternatives` / `Fallbacks` / `Merger` / `WrapperBase`：并行与回退策略
+  - `Generator` / `PropagatingForward` / `PropagatingBackward` / `Connecting`：按解传播方向分类的基类
+
+- 任务状态与可视化/调试
+  - `InterfaceState` / `Interface`
+  - `SolutionBase` / `SolutionSequence` / `SubTrajectory` / `WrappedSolution`
+  - `Introspection`（用于 RViz MTC 面板调试与解可视化）
+
+- 属性系统
+  - `Property` / `PropertyMap`
+  - `PropertySerializer` / `PropertyTypeRegistry`
+
+### Standard Stages（`moveit::task_constructor::stages`）
+
+- 常用（高频）
+  - `CurrentState`
+  - `Connect`
+  - `MoveTo`
+  - `MoveRelative`
+  - `ComputeIK`
+  - `ModifyPlanningScene`
+  - `GenerateGraspPose`
+  - `GeneratePlacePose`
+
+- 生成与过滤
+  - `GeneratePose` / `GenerateRandomPose` / `FixedCartesianPoses`
+  - `PredicateFilter` / `LimitSolutions`
+
+- 抓取封装
+  - `Pick` / `Place`
+  - `SimpleGrasp` / `SimpleUnGrasp`
+  - `PickPlaceBase` / `SimpleGraspBase`
+
+- 其他常见
+  - `FixedState`
+  - `FixCollisionObjects`
+  - `NoOp`
+  - `PassThrough`
+
+### Solvers API（`moveit::task_constructor::solvers`）
+
+- `PlannerInterface`（规划器统一接口）
+- `PipelinePlanner`（调用 MoveIt planning pipeline，如 OMPL）
+- `CartesianPath`（笛卡尔路径）
+- `JointInterpolationPlanner`（关节插值）
+- `MultiPlanner`（多规划器组合）
+
+### Cost Terms（`moveit::task_constructor::cost`）
+
+- `PathLength`
+- `TrajectoryDuration`
+- `DistanceToReference`
+- `LinkMotion`
+- `LinkRotation`
+- `Clearance`
+- `Constant`
+
+### MTC 通信接口（`moveit_task_constructor_msgs`）
+
+- Messages
+  - `TaskDescription` / `TaskStatistics`
+  - `StageDescription` / `StageStatistics`
+  - `Solution` / `SolutionInfo` / `SubSolution` / `SubTrajectory`
+  - `Property` / `TrajectoryExecutionInfo`
+
+- Service
+  - `GetSolution`
+
+- Action
+  - `ExecuteTaskSolution`
+
+### 头文件速查
+
+```cpp
+#include <moveit/task_constructor/task.h>
+#include <moveit/task_constructor/stages.h>
+#include <moveit/task_constructor/solvers.h>
+```
+
+如果要精确查某个类的构造函数和成员函数签名，建议直接在 Doxygen 的 Class Index 中按类名跳转：
+
+- [Class Index](https://moveit.github.io/moveit_task_constructor/_static/classes.html)
+- [File List（可按头文件定位）](https://moveit.github.io/moveit_task_constructor/_static/files.html)
+
+### build your own Task
+
+## Perception Pipeline
+
+- [tutorial perception_pipeline](https://moveit.picknik.ai/main/doc/examples/perception_pipeline/perception_pipeline_tutorial.html)
+- [感知原理](https://moveit.picknik.ai/main/doc/concepts/planning_scene_monitor.html)
+- [手眼标定](https://moveit.picknik.ai/main/doc/examples/hand_eye_calibration/hand_eye_calibration_tutorial.html)
+- [深度学习抓取](https://moveit.picknik.ai/main/doc/examples/moveit_deep_grasps/moveit_deep_grasps_tutorial.html)
+
+## 设置rviz
+
+```rviz
+# 关闭循环播放
+Loop Animation: false
+# 显示轨迹
+          wrist_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: true
+            Value: true
+# 显示的轨迹长度
+Trail Step Size: 100
+```
