@@ -1,7 +1,8 @@
 # my_notebook
-个人学习笔记
+
+个人学习笔记，主要存放需要用到 jupyter notebook 的学习内容
 
 - branch: opencv
-  - 基于 opencv-python
-- branch: moveit2
-  - 基于 ros-humble 版本
+  - base on opencv-python
+- branch: torch
+  - base on torch
