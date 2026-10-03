@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 import glob
 import json
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Optional
 
 class CameraCalibrator:
     def __init__(self, chessboard_size: Tuple[int, int], square_size: float):
@@ -31,7 +31,7 @@ class CameraCalibrator:
         return objp * self.square_size
     
     def find_chessboard_corners(self, image_dir: str, image_type: str = "jpg", 
-                                show_corners: bool = True, save_dir: str = None) -> Tuple[List, List]:
+                                show_corners: bool = True, save_dir: Optional[str] = None) -> Tuple[List, List]:
         """
         在图像中查找棋盘格角点
         Args:
@@ -91,7 +91,7 @@ class CameraCalibrator:
         print(f"Successfully detected corners in {len(obj_points)} images")
         return obj_points, img_points
     
-    def calibrate_camera(self, image_dir: str, image_type: str = "jpg", save_dir: str = None) -> Dict:
+    def calibrate_camera(self, image_dir: str, image_type: str = "jpg", save_dir: Optional[str] = None) -> Dict:
         """
         执行相机标定，计算内外参数
         Args:
@@ -108,8 +108,10 @@ class CameraCalibrator:
         image_size = (sample_image.shape[1], sample_image.shape[0])  # (width, height)
         # 相机标定
         print("Performing camera calibration...")
+        initial_camera_matrix = np.eye(3, dtype=np.float64)
+        initial_dist_coeffs = np.zeros((8, 1), dtype=np.float64)
         ret, self.camera_matrix, self.dist_coeffs, self.rvecs, self.tvecs = cv2.calibrateCamera(
-            obj_points, img_points, image_size, None, None)
+            obj_points, img_points, image_size, initial_camera_matrix, initial_dist_coeffs)
         if not ret:
             raise RuntimeError("Camera calibration failed")
         # 计算重投影误差

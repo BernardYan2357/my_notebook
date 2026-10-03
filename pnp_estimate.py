@@ -83,12 +83,12 @@ def draw_pose_axes(frame, camera_matrix, dist_coeffs, rvec, tvec, length=0.07):
         length: 坐标轴长度
     """
     # 定义坐标系轴的点（世界坐标系）
-    axis_points = np.float32([
+    axis_points = np.array([
         [0,      0,           0],
         [length, 0,           0],
         [0,      length,      0],
         [0,      0,      length]
-    ])
+    ], dtype=np.float32)
     # 将世界坐标系中的点投影到图像平面
     img_points, _ = cv2.projectPoints(axis_points, rvec, tvec, camera_matrix, dist_coeffs)
     img_points = img_points.reshape(-1, 2)
@@ -117,10 +117,10 @@ def draw_pose_axes(frame, camera_matrix, dist_coeffs, rvec, tvec, length=0.07):
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 204, 0), 2)
 
 def main():
-    is_save=False
+    is_save=True
     save_path="./images/pnp.mp4"
     # 打开摄像头
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
     # 获取视频的帧率和尺寸
     fps = int(cap.get(cv2.CAP_PROP_FPS))
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -141,7 +141,7 @@ def main():
         ],dtype=np.float32)
     # 创建 VideoWriter 对象，保存处理后的视频
     if is_save:
-        fourcc = cv2.VideoWriter_fourcc(*'H264')
+        fourcc = getattr(cv2, "VideoWriter_fourcc")(*"H264")
         out = cv2.VideoWriter(save_path, fourcc, fps, (width, height))
     # 主循环
     while True:

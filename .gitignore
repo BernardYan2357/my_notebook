@@ -2,3 +2,4 @@
 __pycache__/
 *.txt
 workspace/
+calib_img/
