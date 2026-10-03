@@ -26,6 +26,6 @@ def Camera_Screenshot(save_dir, camera_num=0):
     cv2.destroyAllWindows()
 
 if __name__ == '__main__':
-    camera_num=1
-    save_dir = pathlib.Path("./camera_calib/")
+    camera_num=0
+    save_dir = pathlib.Path("./")
     Camera_Screenshot(save_dir, camera_num)

@@ -1,5 +1,3 @@
 .vscode/
 __pycache__/
-*.txt
-workspace/
 calib_img/
